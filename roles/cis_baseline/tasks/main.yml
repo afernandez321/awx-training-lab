@@ -1,0 +1,35 @@
+---
+- name: Configure CIS kernel security parameters
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: true
+    reload: true
+  loop: "{{ cis_sysctl_settings | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Read CIS kernel security parameters
+  ansible.builtin.command:
+    cmd: "sysctl -n {{ item.key }}"
+  loop: "{{ cis_sysctl_settings | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: cis_sysctl_validation
+  changed_when: false
+  check_mode: false
+
+- name: Validate CIS kernel security parameters
+  ansible.builtin.assert:
+    that:
+      - item.stdout | trim == item.item.value | string
+    fail_msg: >-
+      FAIL: {{ item.item.key }} expected={{ item.item.value }}
+      actual={{ item.stdout | trim }}
+    success_msg: >-
+      PASS: {{ item.item.key }}={{ item.stdout | trim }}
+  loop: "{{ cis_sysctl_validation.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: not ansible_check_mode
