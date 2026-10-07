@@ -1,0 +1,8 @@
+---
+- name: Manage AWX training configuration
+  ansible.builtin.template:
+    src: awx-training.conf.j2
+    dest: "{{ linux_baseline_config_file }}"
+    owner: root
+    group: root
+    mode: "0644"

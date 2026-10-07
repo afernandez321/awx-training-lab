@@ -1,0 +1,4 @@
+---
+linux_baseline_training_environment: true
+linux_baseline_managed_by: "AWX"
+linux_baseline_config_file: "/etc/awx-training.conf"
