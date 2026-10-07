@@ -20,3 +20,16 @@
       - "Host: {{ inventory_hostname }}"
       - "Packages changed: {{ debian_upgrade_result.changed }}"
       - "Reboot required: {{ debian_reboot_required.stat.exists }}"
+
+- name: Reboot Debian when required
+  ansible.builtin.reboot:
+    msg: "Reboot initiated by AWX after patching"
+    connect_timeout: 10
+    reboot_timeout: 600
+    pre_reboot_delay: 0
+    post_reboot_delay: 15
+    test_command: whoami
+  when: debian_reboot_required.stat.exists
+
+- name: Confirm server is available after patching
+  ansible.builtin.ping:
