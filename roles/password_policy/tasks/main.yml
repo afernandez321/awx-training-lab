@@ -1,0 +1,61 @@
+---
+# Linux password policy configuration
+
+# ---------------------------------------------------------------------------
+# REQUIRED PACKAGES
+# ---------------------------------------------------------------------------
+
+- name: Install password quality package on Debian
+  ansible.builtin.package:
+    name: libpam-pwquality
+    state: present
+  when: ansible_facts.os_family == "Debian"
+
+- name: Install password quality package on RedHat
+  ansible.builtin.package:
+    name: libpwquality
+    state: present
+  when: ansible_facts.os_family == "RedHat"
+
+# ---------------------------------------------------------------------------
+# PASSWORD AGING - /etc/login.defs
+# ---------------------------------------------------------------------------
+
+- name: Configure password aging policy
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^\\s*{{ item.key }}\\s+"
+    line: "{{ item.key }}\t{{ item.value }}"
+    backup: true
+  loop:
+    - { key: "PASS_MAX_DAYS", value: "{{ password_policy_max_days }}" }
+    - { key: "PASS_MIN_DAYS", value: "{{ password_policy_min_days }}" }
+    - { key: "PASS_WARN_AGE", value: "{{ password_policy_warn_age }}" }
+  loop_control:
+    label: "{{ item.key }}"
+
+# ---------------------------------------------------------------------------
+# PASSWORD QUALITY - /etc/security/pwquality.conf
+# ---------------------------------------------------------------------------
+
+- name: Configure password quality policy
+  ansible.builtin.lineinfile:
+    path: /etc/security/pwquality.conf
+    regexp: "^\\s*#?\\s*{{ item.key }}\\s*="
+    line: "{{ item.key }} = {{ item.value }}"
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  loop:
+    - { key: "minlen", value: "{{ password_policy_min_length }}" }
+    - { key: "minclass", value: "{{ password_policy_min_class }}" }
+    - { key: "dcredit", value: "{{ password_policy_dcredit }}" }
+    - { key: "ucredit", value: "{{ password_policy_ucredit }}" }
+    - { key: "lcredit", value: "{{ password_policy_lcredit }}" }
+    - { key: "ocredit", value: "{{ password_policy_ocredit }}" }
+    - { key: "retry", value: "{{ password_policy_retry }}" }
+  loop_control:
+    label: "{{ item.key }}"

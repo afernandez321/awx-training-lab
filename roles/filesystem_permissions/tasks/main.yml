@@ -1,0 +1,81 @@
+---
+# Critical filesystem permission hardening
+
+- name: Select filesystem permission policy for Debian
+  ansible.builtin.set_fact:
+    filesystem_permissions_paths: "{{ filesystem_permissions_debian }}"
+  when: ansible_facts.os_family == "Debian"
+
+- name: Select filesystem permission policy for Red Hat
+  ansible.builtin.set_fact:
+    filesystem_permissions_paths: "{{ filesystem_permissions_redhat }}"
+  when: ansible_facts.os_family == "RedHat"
+
+- name: Fail on unsupported operating system
+  ansible.builtin.assert:
+    that:
+      - filesystem_permissions_paths is defined
+    fail_msg: >-
+      Unsupported operating system family:
+      {{ ansible_facts.os_family }}.
+
+- name: Check critical filesystem paths
+  ansible.builtin.stat:
+    path: "{{ item.path }}"
+  loop: "{{ filesystem_permissions_paths }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: filesystem_permissions_precheck
+
+- name: Verify critical filesystem paths exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isreg
+    fail_msg: >-
+      Required file {{ item.item.path }} does not exist
+      or is not a regular file.
+  loop: "{{ filesystem_permissions_precheck.results }}"
+  loop_control:
+    label: "{{ item.item.path }}"
+
+- name: Enforce critical filesystem permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+    state: file
+  loop: "{{ filesystem_permissions_paths }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Read critical filesystem permissions after remediation
+  ansible.builtin.stat:
+    path: "{{ item.path }}"
+  loop: "{{ filesystem_permissions_paths }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: filesystem_permissions_validation
+  when: not ansible_check_mode
+
+- name: Validate critical filesystem permissions
+  ansible.builtin.assert:
+    that:
+      - item.stat.pw_name == item.item.owner
+      - item.stat.gr_name == item.item.group
+      - item.stat.mode == item.item.mode
+    fail_msg: >-
+      {{ item.item.path }} does not have the required
+      owner={{ item.item.owner }},
+      group={{ item.item.group }},
+      mode={{ item.item.mode }}.
+    success_msg: >-
+      {{ item.item.path }} permissions validated:
+      owner={{ item.item.owner }},
+      group={{ item.item.group }},
+      mode={{ item.item.mode }}.
+  loop: "{{ filesystem_permissions_validation.results }}"
+  loop_control:
+    label: "{{ item.item.path }}"
+  when: not ansible_check_mode
