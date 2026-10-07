@@ -1,0 +1,6 @@
+---
+- name: Install standard CentOS packages
+  ansible.builtin.dnf:
+    name: "{{ centos_packages }}"
+    state: present
+    update_cache: true

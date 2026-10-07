@@ -1,0 +1,25 @@
+---
+# CentOS Home Lab configuration
+
+centos_packages:
+  - net-tools
+  - sysstat
+  - ncdu
+
+vim_configuration_user: "afernandez"
+vim_configuration_user_home: "/home/afernandez"
+vim_configuration_manage_root: true
+
+sudo_configuration_users:
+  - afernandez
+  - acevedo
+
+user_management_users:
+  - name: acevedo
+    comment: "Amparo Acevedo"
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+node_exporter_version: "1.8.1"
+node_exporter_listen_address: ":9100"

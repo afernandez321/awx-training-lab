@@ -1,0 +1,5 @@
+---
+centos_packages:
+  - net-tools
+  - sysstat
+  - ncdu
