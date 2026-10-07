@@ -1,0 +1,27 @@
+---
+- name: Demonstrate Ansible idempotency
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Create AWX training configuration file
+      ansible.builtin.copy:
+        dest: /etc/awx-training.conf
+        content: |
+          # Managed by Ansible/AWX
+          training_environment=true
+          managed_by=awx
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Verify training configuration file
+      ansible.builtin.command:
+        cmd: cat /etc/awx-training.conf
+      register: training_file
+      changed_when: false
+
+    - name: Display training configuration
+      ansible.builtin.debug:
+        var: training_file.stdout_lines
