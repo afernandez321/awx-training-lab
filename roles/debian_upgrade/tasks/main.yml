@@ -7,3 +7,16 @@
 - name: Perform Debian distribution upgrade
   ansible.builtin.apt:
     upgrade: dist
+  register: debian_upgrade_result
+
+- name: Check whether reboot is required
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+  register: debian_reboot_required
+
+- name: Display patching result
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Packages changed: {{ debian_upgrade_result.changed }}"
+      - "Reboot required: {{ debian_reboot_required.stat.exists }}"
