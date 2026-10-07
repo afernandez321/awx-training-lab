@@ -1,0 +1,12 @@
+---
+- name: Enforce SSH user file permissions
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: ssh_permissions
+      tags:
+        - ssh
+        - security
+        - permissions
