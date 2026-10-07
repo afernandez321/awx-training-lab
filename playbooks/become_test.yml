@@ -1,0 +1,15 @@
+---
+- name: Test AWX privilege escalation
+  hosts: all
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Check effective user
+      ansible.builtin.command: id
+      register: id_output
+      changed_when: false
+
+    - name: Display effective user
+      ansible.builtin.debug:
+        var: id_output.stdout
