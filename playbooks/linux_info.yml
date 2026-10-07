@@ -1,0 +1,25 @@
+---
+- name: Gather Linux server information
+  hosts: all
+  gather_facts: true
+
+  tasks:
+    - name: Display hostname
+      ansible.builtin.debug:
+        msg: "Hostname: {{ ansible_hostname }}"
+
+    - name: Display operating system
+      ansible.builtin.debug:
+        msg: "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+
+    - name: Display kernel
+      ansible.builtin.debug:
+        msg: "Kernel: {{ ansible_kernel }}"
+
+    - name: Display CPU count
+      ansible.builtin.debug:
+        msg: "CPU cores: {{ ansible_processor_vcpus }}"
+
+    - name: Display memory
+      ansible.builtin.debug:
+        msg: "Memory: {{ ansible_memtotal_mb }} MB"
