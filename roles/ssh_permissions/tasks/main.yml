@@ -1,0 +1,143 @@
+---
+- name: Get passwd database
+  ansible.builtin.getent:
+    database: passwd
+
+- name: Initialize SSH permissions user list
+  ansible.builtin.set_fact:
+    ssh_permissions_users: []
+
+- name: Build list of interactive user accounts
+  ansible.builtin.set_fact:
+    ssh_permissions_users: >-
+      {{
+        ssh_permissions_users
+        +
+        [
+          {
+            'name': item.key,
+            'uid': item.value[1] | int,
+            'gid': item.value[2] | int,
+            'home': item.value[4],
+            'shell': item.value[5]
+          }
+        ]
+      }}
+  loop: "{{ ansible_facts.getent_passwd | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when:
+    - item.value[1] | int >= ssh_permissions_min_uid
+    - item.value[1] | int <= ssh_permissions_max_uid
+    - item.value[4] | length > 1
+    - item.value[5] not in ['/usr/sbin/nologin', '/sbin/nologin', '/bin/false']
+
+- name: Check user .ssh directories
+  ansible.builtin.stat:
+    path: "{{ item.home }}/.ssh"
+  loop: "{{ ssh_permissions_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ssh_permissions_dir_status
+
+- name: Correct existing .ssh directory permissions and ownership
+  ansible.builtin.file:
+    path: "{{ item.stat.path }}"
+    owner: "{{ item.item.name }}"
+    group: "{{ item.item.gid }}"
+    mode: "{{ ssh_permissions_ssh_dir_mode }}"
+    state: directory
+  loop: "{{ ssh_permissions_dir_status.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - item.stat.exists
+    - item.stat.isdir
+
+- name: Check authorized_keys files
+  ansible.builtin.stat:
+    path: "{{ item.home }}/.ssh/authorized_keys"
+  loop: "{{ ssh_permissions_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ssh_permissions_authorized_keys_status
+
+- name: Correct existing authorized_keys permissions and ownership
+  ansible.builtin.file:
+    path: "{{ item.stat.path }}"
+    owner: "{{ item.item.name }}"
+    group: "{{ item.item.gid }}"
+    mode: "{{ ssh_permissions_authorized_keys_mode }}"
+    state: file
+  loop: "{{ ssh_permissions_authorized_keys_status.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - item.stat.exists
+    - item.stat.isreg
+
+# ---------------------------------------------------------------------------
+# POST-REMEDIATION VALIDATION
+# ---------------------------------------------------------------------------
+
+- name: Validate .ssh directory permissions and ownership
+  ansible.builtin.stat:
+    path: "{{ item.home }}/.ssh"
+  loop: "{{ ssh_permissions_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ssh_permissions_dir_validation
+  when: not ansible_check_mode
+
+- name: Assert .ssh directory compliance
+  ansible.builtin.assert:
+    that:
+      - item.stat.mode == ssh_permissions_ssh_dir_mode
+      - item.stat.pw_name == item.item.name
+      - item.stat.gid == item.item.gid
+    success_msg: >-
+      PASS: {{ item.stat.path }}
+      mode={{ item.stat.mode }}
+      owner={{ item.stat.pw_name }}
+      group={{ item.stat.gr_name }}
+    fail_msg: >-
+      FAIL: {{ item.stat.path }} does not meet SSH permission requirements
+  loop: "{{ ssh_permissions_dir_validation.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - not ansible_check_mode
+    - item.stat is defined
+    - item.stat.exists | default(false)
+    - item.stat.isdir | default(false)
+
+- name: Validate authorized_keys permissions and ownership
+  ansible.builtin.stat:
+    path: "{{ item.home }}/.ssh/authorized_keys"
+  loop: "{{ ssh_permissions_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ssh_permissions_authorized_keys_validation
+  when: not ansible_check_mode
+
+- name: Assert authorized_keys compliance
+  ansible.builtin.assert:
+    that:
+      - item.stat.mode == ssh_permissions_authorized_keys_mode
+      - item.stat.pw_name == item.item.name
+      - item.stat.gid == item.item.gid
+    success_msg: >-
+      PASS: {{ item.stat.path }}
+      mode={{ item.stat.mode }}
+      owner={{ item.stat.pw_name }}
+      group={{ item.stat.gr_name }}
+    fail_msg: >-
+      FAIL: {{ item.stat.path }} does not meet SSH permission requirements
+  loop: "{{ ssh_permissions_authorized_keys_validation.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - not ansible_check_mode
+    - item.stat is defined
+    - item.stat.exists | default(false)
+    - item.stat.isreg | default(false)
