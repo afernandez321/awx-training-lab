@@ -1,0 +1,12 @@
+---
+- name: Apply PAM authentication hardening
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: pam_hardening
+      tags:
+        - pam
+        - security
+        - hardening

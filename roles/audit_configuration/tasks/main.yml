@@ -1,0 +1,110 @@
+---
+# Linux audit configuration
+
+# ---------------------------------------------------------------------------
+# PACKAGE
+# ---------------------------------------------------------------------------
+
+- name: Install audit package on Debian
+  ansible.builtin.package:
+    name: auditd
+    state: present
+  when: ansible_facts.os_family == "Debian"
+
+- name: Install audit package on RedHat
+  ansible.builtin.package:
+    name: audit
+    state: present
+  when: ansible_facts.os_family == "RedHat"
+
+# ---------------------------------------------------------------------------
+# SERVICE
+# ---------------------------------------------------------------------------
+
+- name: Enable and start auditd
+  ansible.builtin.service:
+    name: auditd
+    enabled: true
+    state: started
+
+# ---------------------------------------------------------------------------
+# AUDIT RULES
+# ---------------------------------------------------------------------------
+
+- name: Configure Linux audit rules
+  ansible.builtin.copy:
+    dest: /etc/audit/rules.d/50-security-baseline.rules
+    owner: root
+    group: root
+    mode: "0600"
+    backup: true
+    content: |
+      # Managed by Ansible - audit_configuration role
+      {% for rule in audit_configuration_rules %}
+      {{ rule }}
+      {% endfor %}
+  notify: Load audit rules
+
+# ---------------------------------------------------------------------------
+# VALIDATION
+# ---------------------------------------------------------------------------
+
+- name: Flush audit handlers before validation
+  ansible.builtin.meta: flush_handlers
+  when: not ansible_check_mode
+
+- name: Read loaded audit rules
+  ansible.builtin.command:
+    cmd: auditctl -l
+  register: audit_configuration_loaded_rules
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Validate passwd audit rule
+  ansible.builtin.assert:
+    that:
+      - "'-w /etc/passwd -p wa -k identity' in audit_configuration_loaded_rules.stdout_lines"
+    fail_msg: "/etc/passwd audit rule is not loaded."
+  when: not ansible_check_mode
+
+- name: Validate group audit rule
+  ansible.builtin.assert:
+    that:
+      - "'-w /etc/group -p wa -k identity' in audit_configuration_loaded_rules.stdout_lines"
+    fail_msg: "/etc/group audit rule is not loaded."
+  when: not ansible_check_mode
+
+- name: Validate shadow audit rule
+  ansible.builtin.assert:
+    that:
+      - "'-w /etc/shadow -p wa -k identity' in audit_configuration_loaded_rules.stdout_lines"
+    fail_msg: "/etc/shadow audit rule is not loaded."
+  when: not ansible_check_mode
+
+- name: Validate gshadow audit rule
+  ansible.builtin.assert:
+    that:
+      - "'-w /etc/gshadow -p wa -k identity' in audit_configuration_loaded_rules.stdout_lines"
+    fail_msg: "/etc/gshadow audit rule is not loaded."
+  when: not ansible_check_mode
+
+- name: Validate sudoers audit rule
+  ansible.builtin.assert:
+    that:
+      - "'-w /etc/sudoers -p wa -k scope' in audit_configuration_loaded_rules.stdout_lines"
+    fail_msg: "/etc/sudoers audit rule is not loaded."
+  when: not ansible_check_mode
+
+- name: Validate sudoers.d audit rule
+  ansible.builtin.assert:
+    that:
+      - "'-w /etc/sudoers.d -p wa -k scope' in audit_configuration_loaded_rules.stdout_lines"
+    fail_msg: "/etc/sudoers.d audit rule is not loaded."
+  when: not ansible_check_mode
+
+- name: Validate sshd_config audit rule
+  ansible.builtin.assert:
+    that:
+      - "'-w /etc/ssh/sshd_config -p wa -k sshd' in audit_configuration_loaded_rules.stdout_lines"
+    fail_msg: "/etc/ssh/sshd_config audit rule is not loaded."
+  when: not ansible_check_mode

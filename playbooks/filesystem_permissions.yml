@@ -1,0 +1,13 @@
+---
+- name: Apply critical filesystem permissions
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: filesystem_permissions
+      tags:
+        - filesystem
+        - permissions
+        - security
+        - hardening

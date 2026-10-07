@@ -1,0 +1,19 @@
+---
+# Linux password policy defaults
+
+# /etc/login.defs password aging
+password_policy_max_days: 90
+password_policy_min_days: 1
+password_policy_warn_age: 7
+
+# Password quality requirements
+password_policy_min_length: 14
+password_policy_min_class: 4
+
+password_policy_dcredit: -1
+password_policy_ucredit: -1
+password_policy_lcredit: -1
+password_policy_ocredit: -1
+
+# Number of attempts allowed by pam_pwquality
+password_policy_retry: 3

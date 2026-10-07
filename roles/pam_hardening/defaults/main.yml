@@ -1,0 +1,14 @@
+---
+# PAM authentication hardening defaults
+
+# Lock account after this many consecutive authentication failures
+pam_hardening_deny: 5
+
+# Failed-attempt window in seconds
+pam_hardening_fail_interval: 900
+
+# Unlock account after this many seconds
+pam_hardening_unlock_time: 900
+
+# Do not apply faillock to root by default
+pam_hardening_even_deny_root: false

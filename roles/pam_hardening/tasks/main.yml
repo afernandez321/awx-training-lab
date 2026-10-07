@@ -1,0 +1,150 @@
+---
+# PAM authentication hardening
+
+# ---------------------------------------------------------------------------
+# FAILLOCK POLICY - ALL SUPPORTED LINUX SYSTEMS
+# ---------------------------------------------------------------------------
+
+- name: Configure PAM faillock policy
+  ansible.builtin.lineinfile:
+    path: /etc/security/faillock.conf
+    regexp: "^\\s*#?\\s*{{ item.key }}\\s*="
+    line: "{{ item.key }} = {{ item.value }}"
+    state: present
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  loop:
+    - { key: "deny", value: "{{ pam_hardening_deny }}" }
+    - { key: "fail_interval", value: "{{ pam_hardening_fail_interval }}" }
+    - { key: "unlock_time", value: "{{ pam_hardening_unlock_time }}" }
+  loop_control:
+    label: "{{ item.key }}"
+
+# ---------------------------------------------------------------------------
+# DEBIAN PAM INTEGRATION
+# ---------------------------------------------------------------------------
+
+- name: Install Debian pam_faillock profile
+  ansible.builtin.copy:
+    dest: /usr/share/pam-configs/faillock
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+    content: |
+      Name: Faillock authentication protection
+      Default: yes
+      Priority: 1024
+      Auth-Type: Primary
+      Auth:
+              required                        pam_faillock.so preauth silent
+              [success=1 default=bad]         pam_unix.so
+              [default=die]                   pam_faillock.so authfail
+              sufficient                      pam_faillock.so authsucc
+      Auth-Initial:
+              required                        pam_faillock.so preauth silent
+              [success=1 default=bad]         pam_unix.so
+              [default=die]                   pam_faillock.so authfail
+              sufficient                      pam_faillock.so authsucc
+  register: pam_hardening_debian_profile
+  when: ansible_facts.os_family == "Debian"
+
+- name: Enable Debian pam_faillock profile
+  ansible.builtin.command:
+    cmd: /usr/sbin/pam-auth-update --enable faillock
+  when:
+    - ansible_facts.os_family == "Debian"
+    - pam_hardening_debian_profile.changed
+    - not ansible_check_mode
+  changed_when: true
+
+# ---------------------------------------------------------------------------
+# RED HAT PAM INTEGRATION
+# ---------------------------------------------------------------------------
+
+- name: Read current authselect configuration
+  ansible.builtin.command:
+    cmd: authselect current
+  register: pam_hardening_authselect_current
+  changed_when: false
+  when: ansible_facts.os_family == "RedHat"
+
+- name: Enable authselect faillock feature
+  ansible.builtin.command:
+    cmd: authselect enable-feature with-faillock
+  when:
+    - ansible_facts.os_family == "RedHat"
+    - "'with-faillock' not in pam_hardening_authselect_current.stdout"
+    - not ansible_check_mode
+  changed_when: true
+
+# ---------------------------------------------------------------------------
+# DEBIAN VALIDATION
+# ---------------------------------------------------------------------------
+
+- name: Read Debian PAM faillock configuration
+  ansible.builtin.command:
+    cmd: grep -n pam_faillock.so /etc/pam.d/common-auth
+  register: pam_hardening_debian_validation
+  changed_when: false
+  when:
+    - ansible_facts.os_family == "Debian"
+    - not ansible_check_mode
+
+- name: Validate Debian pam_faillock integration
+  ansible.builtin.assert:
+    that:
+      - "'preauth' in pam_hardening_debian_validation.stdout"
+      - "'authfail' in pam_hardening_debian_validation.stdout"
+      - "'authsucc' in pam_hardening_debian_validation.stdout"
+    fail_msg: "pam_faillock is not correctly integrated into the Debian PAM stack."
+    success_msg: "Debian pam_faillock integration validated."
+  when:
+    - ansible_facts.os_family == "Debian"
+    - not ansible_check_mode
+
+# ---------------------------------------------------------------------------
+# RED HAT VALIDATION
+# ---------------------------------------------------------------------------
+
+- name: Read Red Hat authselect configuration
+  ansible.builtin.command:
+    cmd: authselect current
+  register: pam_hardening_redhat_authselect
+  changed_when: false
+  when:
+    - ansible_facts.os_family == "RedHat"
+    - not ansible_check_mode
+
+- name: Validate Red Hat authselect faillock feature
+  ansible.builtin.assert:
+    that:
+      - "'with-faillock' in pam_hardening_redhat_authselect.stdout"
+    fail_msg: "authselect with-faillock feature is not enabled."
+    success_msg: "Red Hat authselect with-faillock feature validated."
+  when:
+    - ansible_facts.os_family == "RedHat"
+    - not ansible_check_mode
+
+- name: Read Red Hat PAM faillock integration
+  ansible.builtin.shell:
+    cmd: grep -h pam_faillock.so /etc/pam.d/system-auth /etc/pam.d/password-auth
+  register: pam_hardening_redhat_pam
+  changed_when: false
+  when:
+    - ansible_facts.os_family == "RedHat"
+    - not ansible_check_mode
+
+- name: Validate Red Hat PAM faillock integration
+  ansible.builtin.assert:
+    that:
+      - "'preauth' in pam_hardening_redhat_pam.stdout"
+      - "'authfail' in pam_hardening_redhat_pam.stdout"
+    fail_msg: "pam_faillock is not correctly integrated into the Red Hat PAM stack."
+    success_msg: "Red Hat pam_faillock integration validated."
+  when:
+    - ansible_facts.os_family == "RedHat"
+    - not ansible_check_mode
