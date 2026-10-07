@@ -1,0 +1,24 @@
+---
+- name: Install Vim
+  ansible.builtin.package:
+    name: vim
+    state: present
+
+- name: Manage user vimrc
+  ansible.builtin.template:
+    src: vimrc.j2
+    dest: "{{ vim_configuration_user_home }}/.vimrc"
+    owner: "{{ vim_configuration_user }}"
+    group: "{{ vim_configuration_user }}"
+    mode: "0644"
+    backup: true
+
+- name: Manage root vimrc
+  ansible.builtin.template:
+    src: vimrc.j2
+    dest: /root/.vimrc
+    owner: root
+    group: root
+    mode: "0644"
+    backup: true
+  when: vim_configuration_manage_root | bool

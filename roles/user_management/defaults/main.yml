@@ -1,0 +1,7 @@
+---
+user_management_users:
+  - name: acevedo
+    comment: "Amparo Acevedo"
+    shell: /bin/bash
+    create_home: true
+    state: present

@@ -1,0 +1,6 @@
+# Managed by Ansible/AAP
+# Do not edit manually.
+
+{% for user in sudo_configuration_users %}
+{{ user }} ALL=(ALL) NOPASSWD:ALL
+{% endfor %}

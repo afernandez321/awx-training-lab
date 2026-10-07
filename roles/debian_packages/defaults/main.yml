@@ -1,0 +1,9 @@
+---
+debian_packages:
+  - terminator
+  - netstat-nat
+  - figlet
+  - sysstat
+  - net-tools
+  - ncdu
+  - zim
