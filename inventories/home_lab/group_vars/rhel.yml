@@ -1,0 +1,6 @@
+---
+# RHEL 9 Home Lab configuration
+
+centos_packages:
+  - net-tools
+  - sysstat
