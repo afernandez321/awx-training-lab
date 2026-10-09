@@ -3,15 +3,25 @@
   hosts: debian
   become: true
   gather_facts: true
+  serial: 1
 
   roles:
     - role: debian_upgrade
-
 
 - name: Patch CentOS Linux systems
   hosts: centos
   become: true
   gather_facts: true
+  serial: 1
+
+  roles:
+    - role: centos_upgrade
+
+- name: Patch RHEL Linux systems
+  hosts: rhel
+  become: true
+  gather_facts: true
+  serial: 1
 
   roles:
     - role: centos_upgrade
