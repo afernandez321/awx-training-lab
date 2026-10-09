@@ -24,4 +24,4 @@
   serial: 1
 
   roles:
-    - role: centos_upgrade
+    - role: rhel_upgrade

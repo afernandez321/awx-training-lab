@@ -1,0 +1,60 @@
+---
+- name: Verify this is a RHEL system
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "RedHat"
+      - ansible_distribution_major_version == "9"
+    fail_msg: "This role supports RHEL 9 only."
+
+- name: Verify RHEL reboot detection utility is installed
+  ansible.builtin.dnf:
+    name: dnf-utils
+    state: present
+
+- name: Upgrade all RHEL packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: true
+  register: rhel_upgrade_result
+
+- name: Check whether RHEL reboot is required
+  ansible.builtin.command:
+    cmd: needs-restarting -r
+  register: rhel_reboot_check
+  changed_when: false
+  failed_when: rhel_reboot_check.rc not in [0, 1]
+  check_mode: false
+
+- name: Display RHEL patching result
+  ansible.builtin.debug:
+    msg:
+      - "Host: {{ inventory_hostname }}"
+      - "Operating system: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "Packages changed: {{ rhel_upgrade_result.changed }}"
+      - "Reboot required: {{ rhel_reboot_check.rc == 1 }}"
+
+- name: Reboot RHEL when required
+  ansible.builtin.reboot:
+    msg: "Reboot initiated by AWX after RHEL patching"
+    connect_timeout: 10
+    reboot_timeout: 600
+    pre_reboot_delay: 0
+    post_reboot_delay: 15
+    test_command: whoami
+  when:
+    - not ansible_check_mode
+    - rhel_reboot_check.rc == 1
+
+- name: Confirm RHEL server is available after patching
+  ansible.builtin.ping:
+
+- name: Display running RHEL kernel
+  ansible.builtin.command:
+    cmd: uname -r
+  register: rhel_running_kernel
+  changed_when: false
+
+- name: Report running RHEL kernel
+  ansible.builtin.debug:
+    msg: "RHEL running kernel: {{ rhel_running_kernel.stdout }}"
